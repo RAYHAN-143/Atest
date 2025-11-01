@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Aviator Crash — Full Demo</title>
+<style>
+  :root{
+    --bg:#0b0f14; --card:#0f1418; --muted:#8b97a3; --accent:#26c281; --danger:#ff5d5d;
+    --panel:#0b1116;
+  }
+  *{box-sizing:border-box;font-family:Inter,ui-sans-serif,system-ui,Arial;}
+  body{margin:0;background:linear-gradient(180deg,#06080b 0%,#0b0f14 100%);color:#e6eef6;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:18px;}
+  .wrap{width:980px;max-width:98vw;display:grid;grid-template-columns:1fr 360px;gap:18px}
+  .card{background:var(--card);border-radius:14px;padding:14px;box-shadow:0 8px 30px rgba(2,6,23,.6);overflow:hidden}
+  header{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+  header h1{margin:0;font-size:18px;color:#ff4f6b}
+  .stage{height:420px;border-radius:10px;background:linear-gradient(180deg,#08111a,#041016);position:relative;overflow:hidden;border:1px solid rgba(255,255,255,0.02)}
+  .plane{position:absolute;left:28px;bottom:14px;width:110px;transition:transform 0.08s linear}
+  .mult{position:absolute;left:20px;top:14px;font-weight:800;font-size:26px}
+  .crash-bubble{position:absolute;right:12px;top:12px;background:rgba(255,255,255,0.04);padding:6px 10px;border-radius:999px;font-size:14px;color:var(--muted)}
+  .controls{display:flex;flex-direction:column;gap:10px}
+  .bet-panel{background:var(--panel);padding:12px;border-radius:10px;display:flex;gap:12px;align-items:center}
+  .bet-panel .left{flex:1}
+  .bet-panel input[type=number]{width:120px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:#eaf6ff}
+  .bet-panel button{background:var(--accent);color:#042022;padding:10px 14px;border-radius:10px;border:none;font-weight:700;cursor:pointer}
+  .bet-panel button.secondary{background:#2b3a47;color:#cfeee3}
+  .small{font-size:13px;color:var(--muted)}
+  .balance{font-weight:800;font-size:18px}
+  .history{max-height:240px;overflow:auto;margin-top:8px}
+  .row{display:flex;justify-content:space-between;padding:8px;border-radius:8px;background:linear-gradient(90deg,rgba(255,255,255,0.01),transparent);margin-bottom:6px}
+  .footer-note{font-size:12px;color:var(--muted);margin-top:8px}
+  .bets-count{display:inline-flex;gap:8px;align-items:center;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,0.02);font-weight:700}
+  .top-bar{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .legend{display:flex;gap:8px;align-items:center}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <header>
+        <h1>Aviator — Demo</h1>
+        <div class="small">Local demo — no real money</div>
+        <div style="flex:1"></div>
+        <div class="bets-count" id="betsCount">0 Bets</div>
+      </header>
+
+      <div class="stage" id="stage">
+        <div class="mult" id="mult">x1.00</div>
+        <div class="crash-bubble" id="status">Waiting...</div>
+
+        <!-- simple sun-ray background -->
+        <svg style="position:absolute;inset:0;opacity:0.03" preserveAspectRatio="none">
+          <defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0.08"/><stop offset="1" stop-color="#fff" stop-opacity="0.00"/></linearGradient></defs>
+          <rect x="0" y="0" width="100%" height="100%" fill="url(#g)"></rect>
+        </svg>
+
+        <!-- plane as inline SVG image -->
+        <img class="plane" id="plane" src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="240" height="80"><g fill="none" stroke="%23ff4f6b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 64 C60 40 120 24 220 12" /><circle cx="18" cy="66" r="6" fill="%23ff4f6b"/></g></svg>' alt="plane" />
+
+      </div>
+
+      <div style="margin-top:10px" class="top-bar">
+        <div><span class="small">Round</span> <strong id="roundNum">0</strong></div>
+        <div class="legend">
+          <div class="small">Crash at: <strong id="crashAt">—</strong></div>
+        </div>
+      </div>
+
+      <div class="footer-note">Tip: place bet before the plane takes off. This is a local simulation only.</div>
+
+    </div>
+
+    <div class="card controls">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div class="small">Balance</div>
+          <div class="balance" id="balance">1000.00</div>
+        </div>
+        <div>
+          <div class="small">Players betting</div>
+          <div id="players" class="small">0</div>
+        </div>
+      </div>
+
+      <!-- Bet panels: two separate bet slots -->
+      <div style="margin-top:12px">
+        <div class="bet-panel">
+          <div class="left">
+            <div class="small">Bet slot 1</div>
+            <input id="bet1" type="number" min="1" value="1" />
+          </div>
+          <div>
+            <button id="place1">Bet</button>
+          </div>
+        </div>
+
+        <div style="height:8px"></div>
+
+        <div class="bet-panel">
+          <div class="left">
+            <div class="small">Bet slot 2</div>
+            <input id="bet2" type="number" min="1" value="1" />
+          </div>
+          <div>
+            <button id="place2" class="secondary">Bet</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+        <button id="cashoutBtn" style="flex:1;background:linear-gradient(90deg,#ffd166,#ff7b7b);">Cashout</button>
+        <button id="autoBtn" style="width:120px;background:#2b3a47">Auto</button>
+      </div>
+
+      <div class="history" id="history" style="margin-top:12px"></div>
+
+      <div class="footer-note">Note: This demo uses local crypto randomness. For real systems server-side rules + legal compliance required.</div>
+    </div>
+  </div>
+
+<script>
+/*
+  Aviator Crash — Local demo
+  - Plane animation with multiplier
+  - Two bet slots (place1, place2)
+  - Shows how many players are betting (simulated)
+  - Local-only: no real money, no server
+*/
+
+// UI refs
+const multEl = document.getElementById('mult');
+const planeEl = document.getElementById('plane');
+const statusEl = document.getElementById('status');
+const roundEl = document.getElementById('roundNum');
+const crashAtEl = document.getElementById('crashAt');
+const balanceEl = document.getElementById('balance');
+const playersEl = document.getElementById('players');
+const betsCountEl = document.getElementById('betsCount');
+const historyEl = document.getElementById('history');
+
+let round = 0;
+let running = false;
+let crashMultiplier = 1.0;
+let visualMult = 1.0;
+let planeBottom = 14;
+let bets = []; // {slot:1|2, amount, placedRound, cashed}
+let playerCount = 0;
+
+// helper to add history row
+function addHistory(t){
+  const r = document.createElement('div'); r.className='row';
+  r.innerHTML = `<div>${t}</div><div class="small">${new Date().toLocaleTimeString()}</div>`;
+  historyEl.prepend(r);
+}
+
+// cryptographic random [0,1)
+function rng(){
+  const arr = new Uint32Array(1); window.crypto.getRandomValues(arr);
+  return arr[0] / 0xFFFFFFFF;
+}
+
+// generate crash multiplier (heavy-tail)
+function generateCrash(){
+  const r = rng();
+  const alpha = 1.6;
+  const scale = 1.01;
+  const x = scale / Math.pow(r, 1/alpha);
+  return Math.max(1.01, Math.min(x, 500.0)); // cap
+}
+
+// start next round
+function startRound(){
+  if(running) return;
+  running = true;
+  round++;
+  roundEl.textContent = round;
+  visualMult = 1.0;
+  multEl.textContent = 'x1.00';
+  planeEl.style.transform = `translateX(0) translateY(0)`;
+  statusEl.textContent = 'Placing...';
+  crashMultiplier = parseFloat(generateCrash().toFixed(2));
+  crashAtEl.textContent = `—`; // hide until crash
+  // simulate some random player count
+  playerCount = Math.floor(20 + Math.random()*200);
+  playersEl.textContent = playerCount;
+  betsCountEl.textContent = `${bets.length}/${playerCount} Bets`;
+  // short window for placing bets (1.5s)
+  setTimeout(()=>{ takeOff(); }, 1500);
+}
+
+// plane takeoff & multiplier growth animation
+function takeOff(){
+  statusEl.textContent = 'Live';
+  const start = performance.now();
+  // Choose a duration to visually ramp up (but crash will happen when visualMult >= crashMultiplier)
+  function frame(now){
+    const t = (now - start)/1000; // seconds
+    // exponentialish growth
+    visualMult = 1 + (Math.exp(t*0.9)-1);
+    // small random jitter to make it organic
+    visualMult *= 1 + (Math.random()*0.006 - 0.003);
+    if(visualMult > 999) visualMult = 999;
+    multEl.textContent = 'x' + visualMult.toFixed(2);
+    // plane moves up as multiplier increases
+    const pct = Math.min(0.95, Math.log(Math.max(visualMult,1))/Math.log(Math.max(crashMultiplier,1)+0.0001));
+    const bottom = 14 + pct * (420 - 120);
+    planeEl.style.transform = `translateX(0) translateY(-${bottom}px)`;
+    // check auto cash or manual cashouts: any bet with auto or manual? For simplicity: do nothing automatic here.
+    // Crash condition
+    if(visualMult >= crashMultiplier){
+      // crash
+      endRound();
+      return;
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+// finalize round
+function endRound(){
+  running = false;
+  multEl.textContent = 'x' + crashMultiplier.toFixed(2) + ' (CRASH)';
+  crashAtEl.textContent = 'x' + crashMultiplier.toFixed(2);
+  statusEl.textContent = 'Crashed';
+  // evaluate bets: any bet with stake placed this round loses unless cashed earlier.
+  // In this demo we only support cashout button (global) — we'll compute payout if user cashed out manually before crash.
+  // For simplicity: if a bet is placed and not cashed, it's lost.
+  // Show summary
+  let won = 0, lost = 0;
+  bets.forEach(b=>{
+    if(!b.cashed && b.placedRound === round){ lost += b.amount; addHistory(`Slot ${b.slot} lost ${b.amount}`); }
+  });
+  // cleanup bets that were cashed already are removed
+  bets = bets.filter(b=>!b.cashed);
+  // update UI counters
+  betsCountEl.textContent = `${bets.length}/${playerCount} Bets`;
+  // reset plane after delay
+  setTimeout(()=>{
+    planeEl.style.transform = `translateX(0) translateY(0)`;
+    addHistory(`Round ${round} ended — crash x${crashMultiplier.toFixed(2)}`);
+    setTimeout(startRound, 2000);
+  }, 900);
+}
+
+// place bet functions for two slots
+document.getElementById('place1').addEventListener('click', ()=>{
+  const amt = Number(document.getElementById('bet1').value) || 0;
+  if(amt <= 0) return alert('বেট 1 একটি বৈধ পরিমাণ দিন');
+  const bal = Number(balanceEl.textContent);
+  if(amt > bal) return alert('ব্যালেন্স যথেষ্ট নেই');
+  balanceEl.textContent = (bal - amt).toFixed(2);
+  bets.push({slot:1, amount:amt, placedRound: round+1, cashed:false}); // placed for next round
+  addHistory(`Slot 1 placed ${amt}`);
+  betsCountEl.textContent = `${bets.length}/${playerCount} Bets`;
+});
+
+document.getElementById('place2').addEventListener('click', ()=>{
+  const amt = Number(document.getElementById('bet2').value) || 0;
+  if(amt <= 0) return alert('বেট 2 একটি বৈধ পরিমাণ দিন');
+  const bal = Number(balanceEl.textContent);
+  if(amt > bal) return alert('ব্যালেন্স যথেষ্ট নেই');
+  balanceEl.textContent = (bal - amt).toFixed(2);
+  bets.push({slot:2, amount:amt, placedRound: round+1, cashed:false});
+  addHistory(`Slot 2 placed ${amt}`);
+  betsCountEl.textContent = `${bets.length}/${playerCount} Bets`;
+});
+
+// manual cashout: on click, cash out current visible multiplier for any bets placed for this round
+document.getElementById('cashoutBtn').addEventListener('click', ()=>{
+  if(!running){
+    alert('রাউন্ড শুরু হলে ক্যাশআউট করতে পারবেন');
+    return;
+  }
+  const cur = Number(multEl.textContent.replace('x','').split(' ')[0]) || 1.0;
+  // cash out all bets that belong to this active round (placedRound === current round)
+  let totalPayout = 0;
+  bets.forEach(b=>{
+    // Only cash bets that were placed before takeoff (placedRound <= round)
+    // For simplicity: allow cashing bets that were placed for this round (placedRound === round)
+    if(!b.cashed && b.placedRound <= round){
+      const payout = Math.floor(b.amount * cur * 100) / 100;
+      totalPayout += payout;
+      b.cashed = true;
+      addHistory(`Slot ${b.slot} cashed @ x${cur.toFixed(2)} → ${payout.toFixed(2)}`);
+    }
+  });
+  // add payout to balance
+  const bal = Number(balanceEl.textContent);
+  balanceEl.textContent = (bal + totalPayout).toFixed(2);
+  betsCountEl.textContent = `${bets.filter(x=>!x.cashed).length}/${playerCount} Bets`;
+});
+
+// Auto button: simulate adding some random bettors quickly
+document.getElementById('autoBtn').addEventListener('click', ()=>{
+  // simulate N players joining with small bets to change the "players" count
+  const extra = Math.floor(3 + Math.random()*15);
+  playerCount += extra;
+  playersEl.textContent = playerCount;
+  addHistory(`${extra} players joined`);
+  betsCountEl.textContent = `${bets.length}/${playerCount} Bets`;
+});
+
+// periodically simulate other players placing bets (for realism)
+setInterval(()=>{
+  if(running) return; // others place before round starts
+  // small chance some bots place bets for next round
+  if(Math.random() < 0.5){
+    const bots = Math.floor(Math.random()*8);
+    for(let i=0;i<bots;i++){
+      const amt = Math.floor(1 + Math.random()*50);
+      bets.push({slot: (Math.random()<0.5?1:2), amount: amt, placedRound: round+1, cashed:false});
+    }
+    playerCount += bots;
+    playersEl.textContent = playerCount;
+    betsCountEl.textContent = `${bets.length}/${playerCount} Bets`;
+  }
+}, 900);
+
+// start first round
+startRound();
+
+</script>
+</body>
+</html>
